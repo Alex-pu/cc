@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: staffmarket-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATABASE_URL
+        sync: false
+      - key: NEON_AUTH_URL
+        sync: false
+      - key: NEON_AUTH_JWKS_URL
+        sync: false
+      - key: NEON_AUTH_JWT_ISSUER
+        sync: false
+      - key: NEON_AUTH_JWT_AUDIENCE
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ADMIN_CONTACT_PHONE
+        value: "0704813341"
+      - key: PAYMENTS_ENABLED
+        value: "true"
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_CURRENCY
+        value: KES
+      - key: PAYSTACK_CALLBACK_URL
+        sync: false
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: CLOUDINARY_UPLOAD_FOLDER
+        value: staffmarket
+      - key: LOG_LEVEL
+        value: info
