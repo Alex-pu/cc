@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { authClient, isAuthConfigured } from './auth';
+
 type Candidate = {
   id: string;
   name: string;
@@ -142,11 +144,6 @@ const initialCandidates: Candidate[] = [
 
 const roleOptions = ['All roles', 'Waitress', 'Housekeeper', 'Secretary', 'Cook', 'Receptionist'];
 const availabilityOptions = ['Any availability', 'Available immediately', 'Available in 1 week'];
-const authLinks = {
-  signIn: import.meta.env.VITE_NEON_AUTH_SIGN_IN_URL || '',
-  signUp: import.meta.env.VITE_NEON_AUTH_SIGN_UP_URL || '',
-  signOut: import.meta.env.VITE_NEON_AUTH_SIGN_OUT_URL || '',
-};
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 function App() {
@@ -401,23 +398,106 @@ function ServerStartupBanner({
 }
 
 function AuthActions() {
-  if (!authLinks.signIn && !authLinks.signUp) {
-    return <span className="auth-status">Auth setup pending</span>;
+  const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!authClient) {
+      return;
+    }
+
+    const client = authClient;
+
+    const loadSession = async () => {
+      const session = await client.getSession();
+      setUserEmail(session?.data?.user?.email ?? null);
+    };
+
+    void loadSession();
+  }, []);
+
+  if (!isAuthConfigured || !authClient) {
+    return <span className="auth-status">Set VITE_NEON_AUTH_URL</span>;
+  }
+
+  const client = authClient;
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBusy(true);
+    setMessage('');
+
+    try {
+      if (mode === 'signUp') {
+        await client.signUp.email({
+          email,
+          password,
+          name: name || email,
+        });
+        setMessage('Account created. Check email if confirmation is required, then sign in.');
+        setMode('signIn');
+      } else {
+        await client.signIn.email({ email, password });
+        const session = await client.getSession();
+        setUserEmail(session?.data?.user?.email ?? email);
+        setMessage('');
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Authentication failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const signOut = async () => {
+    setBusy(true);
+    await client.signOut();
+    setUserEmail(null);
+    setBusy(false);
+  };
+
+  if (userEmail) {
+    return (
+      <div className="auth-signed-in">
+        <span>{userEmail}</span>
+        <button className="text-link-button" onClick={signOut} disabled={busy}>
+          Sign out
+        </button>
+      </div>
+    );
   }
 
   return (
-    <div className="auth-actions" aria-label="Account actions">
-      {authLinks.signIn && (
-        <a className="text-link-button" href={authLinks.signIn}>
+    <form className="auth-form" aria-label="Account actions" onSubmit={submit}>
+      <div className="auth-mode">
+        <button type="button" className={mode === 'signIn' ? 'active' : ''} onClick={() => setMode('signIn')}>
           Sign in
-        </a>
-      )}
-      {authLinks.signUp && (
-        <a className="primary-link-button" href={authLinks.signUp}>
+        </button>
+        <button type="button" className={mode === 'signUp' ? 'active' : ''} onClick={() => setMode('signUp')}>
           Sign up
-        </a>
+        </button>
+      </div>
+      {mode === 'signUp' && (
+        <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Name" />
       )}
-    </div>
+      <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" type="email" />
+      <input
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        placeholder="Password"
+        type="password"
+        minLength={8}
+      />
+      <button className="primary-link-button" type="submit" disabled={busy || !email || !password}>
+        {busy ? 'Wait' : mode === 'signIn' ? 'Sign in' : 'Create'}
+      </button>
+      {message && <small>{message}</small>}
+    </form>
   );
 }
 

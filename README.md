@@ -38,15 +38,12 @@ Before deployment, add these auth values to the backend environment:
 - optional `NEON_AUTH_JWT_ISSUER`
 - optional `NEON_AUTH_JWT_AUDIENCE`
 
-Add these hosted auth links to the frontend environment:
+Add this auth value to the frontend environment:
 
-- `VITE_NEON_AUTH_SIGN_IN_URL`
-- `VITE_NEON_AUTH_SIGN_UP_URL`
-- optional `VITE_NEON_AUTH_SIGN_OUT_URL`
+- `VITE_NEON_AUTH_URL`
 
-After a user signs in, call `POST /api/v1/users/sync` with the bearer token and a role
-array such as `["employer"]` or `["jobseeker"]`. The API takes the Neon Auth user id
-and email from the verified token, then creates or updates the local marketplace user.
+The frontend uses Neon Auth directly for email/password sign-up and sign-in. After a
+user signs in, authenticated API calls should send the Neon Auth JWT as a bearer token.
 
 ## Project Layout
 
