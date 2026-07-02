@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type Candidate = {
   id: string;
@@ -147,8 +147,12 @@ const authLinks = {
   signUp: import.meta.env.VITE_NEON_AUTH_SIGN_UP_URL || '',
   signOut: import.meta.env.VITE_NEON_AUTH_SIGN_OUT_URL || '',
 };
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 function App() {
+  const [serverStatus, setServerStatus] = useState<'idle' | 'starting' | 'slow' | 'ready' | 'unavailable'>(
+    apiBaseUrl ? 'starting' : 'idle',
+  );
   const [candidates, setCandidates] = useState(initialCandidates);
   const [selectedId, setSelectedId] = useState(initialCandidates[0].id);
   const [keyword, setKeyword] = useState('');
@@ -157,6 +161,41 @@ function App() {
   const [availability, setAvailability] = useState(availabilityOptions[0]);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [activeTab, setActiveTab] = useState<'search' | 'saved'>('search');
+
+  useEffect(() => {
+    if (!apiBaseUrl) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const slowStartId = window.setTimeout(() => {
+      setServerStatus('slow');
+    }, 8000);
+
+    const checkServer = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/health`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+
+        setServerStatus(response.ok ? 'ready' : 'unavailable');
+      } catch {
+        if (!controller.signal.aborted) {
+          setServerStatus('unavailable');
+        }
+      } finally {
+        window.clearTimeout(slowStartId);
+      }
+    };
+
+    void checkServer();
+
+    return () => {
+      window.clearTimeout(slowStartId);
+      controller.abort();
+    };
+  }, []);
 
   const filteredCandidates = useMemo(() => {
     const searchText = `${keyword} ${location}`.trim().toLowerCase();
@@ -196,6 +235,7 @@ function App() {
 
   return (
     <main className="app-shell">
+      <ServerStartupBanner status={serverStatus} />
       <header className="topbar">
         <a className="brand" href="/">
           StaffMarket
@@ -334,6 +374,29 @@ function App() {
         />
       </section>
     </main>
+  );
+}
+
+function ServerStartupBanner({
+  status,
+}: {
+  status: 'idle' | 'starting' | 'slow' | 'ready' | 'unavailable';
+}) {
+  if (status === 'idle' || status === 'ready') {
+    return null;
+  }
+
+  const isStarting = status === 'starting' || status === 'slow';
+
+  return (
+    <div className={isStarting ? 'server-banner' : 'server-banner warning'} role="status" aria-live="polite">
+      {isStarting && <span className="loading-dot" aria-hidden="true" />}
+      <span>
+        {status === 'starting' && 'Server is starting. Free hosting can take a moment on the first request.'}
+        {status === 'slow' && 'Server is still waking up. You can keep browsing while it finishes starting.'}
+        {status === 'unavailable' && 'Server could not be reached. You can keep browsing and try again shortly.'}
+      </span>
+    </div>
   );
 }
 

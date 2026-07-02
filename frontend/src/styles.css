@@ -48,6 +48,46 @@ a {
   min-height: 100vh;
 }
 
+.server-banner {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #bed1ee;
+  background: #f7fbff;
+  color: var(--blue-dark);
+  font-size: 14px;
+  font-weight: 750;
+  text-align: center;
+}
+
+.server-banner.warning {
+  border-color: #d8c68a;
+  background: #fff8df;
+  color: #4b3b00;
+}
+
+.loading-dot {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #bed1ee;
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex: 0 0 auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .topbar {
   position: sticky;
   top: 0;
